@@ -1,51 +1,52 @@
 """
 MFET 44200 - Lab 06
-Zachary Wilson
 
-PID Controller + utilities
+PID Controller 
 """
 
-def PID_controller(ke, ki, kd, e, i, d):
+from simple_pid import PID
+
+def PID_Controller(ke, ki, kd, InputReading, Output, MappedSetpoint):
     # Basic PID controller equation, takes in 3 data points and multiplies them by a constant
     # the error value is then returned for use in controlling the system
 
-    # 'e' - original, first order variable
-    # 'i' - the integral of the first order variable
-    # 'd' - the derivative of the first order variable
+    # 'InputReading' - original, first order variable, defined as e in main function
+    # 'Output' - the integral of the first order variable, defined as i in main function
+    # 'MappedSetpoint' - the derivative of the first order variable, defined as d in main function
     # 'ke' - constant of the variable
     # 'ki' - constant of the integral
     # 'kd' - constant of the derivative
 
-    error = (ke * e) + (ki * i) + (kd * d)
-    return error
+    ControllerPID = PID(InputReading, Output, MappedSetpoint)
+
+    return ControllerPID
 
 
+def main():
+    i=1
 
-def fake_derive(x, dx, dt):
-    # takes in two data points, and the time between them, and returns the slope
+    #ke ki and kd are constants, you do not want to change them after you find what values work with them
+    ke = 2
+    ki = 8
+    kd = 0.125
 
-    # 'x' - first data point
-    # 'dx' - second data point
-    # 'dt' - delta time
-    
-    return (dx-x) / dt
+    while i == 1: 
+        
+        #setpoint is going to be the starting position
+        SetPoint = 0
 
+        #Output is going to be the velocity value
+        Output = 0
 
+        #RawReading is going to be the voltage value
+        RawReading = 0 
 
-def fake_integrate(x, dx, dt):
-    # takes in two data points, and the time between them, and returns the area underneath
-    
-    # 'x' - first data point
-    # 'dx' - second data point
-    # 'dt' - delta time
-    
-    return ((dx -x) * dt) / 2
+        e = map(RawReading, 0, 0, 0, 100)
 
+        i = map(Output, 0, 0, 0, 100)
 
-"""
-def calculate_steering_angle(theta, expected, vel):
+        d = map(SetPoint, 360, 0, 0, 100)
 
+        PID_Controller(ke, ki, kd, e, i, d)
 
-
-    return angle
-"""
+main()
