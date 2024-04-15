@@ -15,6 +15,7 @@ import rospy
 import geometry_msgs.msg
 import tf
 import math
+import numpy as np
 from simple_pid import PID
 from MFET44200_Lab06_Utils import calculate_linear_dist
 from MFET44200_Lab06_Steering import calculate_perpendicular_dist, calculate_steering_angle, calculate_waypoint_angle
@@ -70,7 +71,7 @@ class MapFollower:
 
 
 
-    def process_steering_angle(self, waypoint_1 : list, waypoint_2 : list, robot_pos : list, vel: float) -> float:
+    def process_steering_target(self, waypoint_1 : list, waypoint_2 : list, robot_pos : list, vel: float) -> float:
         #############################################################################################
         # Takes in the waypoint data, the robot's current position, and an arbitary velocity value, 
         # and returns a floating point angle for the car to target in radians.
@@ -97,6 +98,32 @@ class MapFollower:
 
 
 
+    def process_velocity_target(self, waypoint_target : list, robot_pos : list, cur_steering_angle : float, vel_max : float, vel_min_percent: float, vel_droppoff) -> float:
+        #############################################################################################
+        # Takes in the waypoint data, the robot's current position, and velocity parameters, 
+        # and returns a floating point velocity for the car to target.
+        # 
+        # 'waypoint_target'     - list format of data extracted from the waypoint file; target waypoint
+        # 'robot_pos'           - list format of data gotten from AMCL; robot's current position
+        # 'vel_max'             - float; arbitrary value that determines the car's max speed
+        # 'vel_min_percent'     - float; arbitrary value that determines the slowest speed the car will decell to as a percentage of the max
+        # 'vel_droppoff'        - float; arbitrary value that determines how soon the car will decelerate as it appreaches the waypoint
+        #
+        # returns vel_final
+        # 'vel_final'           - float; the calculated velocity for the rally car to target.
+        ############################################################################################# 
+       
+        waypoint_2_tup = (waypoint_target[0], waypoint_target[1])                 # converts data to be readable by following methods
+        robot_pos_tup = (self.current_pose[0], self.current_pose[1])
+        
+        linear_comp =  np.exp(vel_droppoff / calculate_linear_dist(robot_pos_tup, waypoint_2_tup))  # Drop off velocity percentage as car approaches the waypoint
+        angular_comp = (np.pi / 2) - cur_steering_angle                                             # Drop off velocity as percentage as car deviates from the path
+        vel_final = vel_max * ((linear_comp * angular_comp) / (np.pi / 2))                          # combines these calculations and max 
+
+        return vel_final
+
+
+
     def control_loop(self) -> None:
         #############################################################################################
         # The "Main" loop of the rallycar control. Makes use incoming data to update the current waypoint,
@@ -113,8 +140,8 @@ class MapFollower:
         current_vel = None
         current_steering_angle = None
         # HACK: current_vel and current_steering_angle are not provided yet! This code stops the interperter from yelling but it does not work yet!
-        vel_error = self.accel_PID(current_vel - self.set_vel)
-        steer_error = self.steering_PID(current_steering_angle - self.process_steering_angle(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel))
+        vel_error = self.accel_PID(current_vel - self.process_velocity_target(self.desired_waypoint, self.current_pose, current_steering_angle, .2, 5))
+        steer_error = self.steering_PID(current_steering_angle - self.process_steering_target(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel))
 
         # Waypoint params
         waypoint_tolerance = 20 # defines the radial distance required to "complete" a waypoint
@@ -136,10 +163,9 @@ class MapFollower:
             self.index = -1 # will have one added to it - making it 0
         elif (self.index > len(self.waypoints.pose_arr) and will_loop == False):
             # HACK: This avoids an indexOutOfBoundsException, but never actually closes down the 
-            #   control loop. While this does not fix the issue, it does tell the car to stop moving forward.
+            #   control loop.
             # TODO: Actually close the control loop.
             # stops the loop from updating if the end of the array has been reached            
-            self.set_vel = 0
             return
 
         # Stepping the desired waypoint 
