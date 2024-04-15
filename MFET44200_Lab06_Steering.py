@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 """
 MFET 44200 - Lab 06
 Contributers: Zachary Wilson
@@ -17,6 +18,14 @@ distance form the target axis.
 """
 
 import numpy as np
+
+def calculate_linear_dist(coord_1 : tuple, coord_2 : tuple) -> float:
+    x_dist = abs(coord_2[0] - coord_1[0])
+    y_dist = abs(coord_2[1] - coord_1[1])
+    
+    return np.sqrt(x_dist ** 2 + y_dist ** 2)
+
+
 
 def calculate_perpendicular_dist(coord_w1 : tuple, coord_w2 : tuple, coord_robot : tuple) -> float:
     #############################################################################################
@@ -45,10 +54,15 @@ def calculate_perpendicular_dist(coord_w1 : tuple, coord_w2 : tuple, coord_robot
         print("Error in calculate_perpendicular_dist: y-intercept calc recieve unexpected value")
 
     # perpendicular distance calculation
-    if coord_robot[1] >= coord_w1[1]:   # signs (positive) the perp. distance from the waypoint axis
+    # this code feels dirty but it works
+    if (coord_robot[1] >= y_intercept) & (coord_w1[0] <= coord_w2[0]):   # signs (positive) the perp. distance from the waypoint axis
         dist = np.sqrt(((coord_robot[0] - x_intercept) ** 2) + ((coord_robot[1] - y_intercept) ** 2))
-    elif coord_robot[1] < coord_w1[1]:  # signs (negative) the perp. distance from the waypoint axis
+    elif (coord_robot[1] >= y_intercept) & (coord_w1[0] > coord_w2[0]):   # signs (negative) the perp. distance from the waypoint axis
         dist = -np.sqrt(((coord_robot[0] - x_intercept) ** 2) + ((coord_robot[1] - y_intercept) ** 2))
+    elif coord_robot[1] < y_intercept & (coord_w1[0] <= coord_w2[0]):  # signs (negative) the perp. distance from the waypoint axis
+        dist = -np.sqrt(((coord_robot[0] - x_intercept) ** 2) + ((coord_robot[1] - y_intercept) ** 2))
+    elif coord_robot[1] < y_intercept & (coord_w1[0] > coord_w2[0]):  # signs (positive) the perp. distance from the waypoint axis
+        dist = np.sqrt(((coord_robot[0] - x_intercept) ** 2) + ((coord_robot[1] - y_intercept) ** 2))
     else:                               # if for some reason both of these fail, print error
         print("Error in calculate_perpendicular_dist: distance calc recieve unexpected value.")
     return dist
