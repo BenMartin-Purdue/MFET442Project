@@ -18,14 +18,7 @@ distance form the target axis.
 """
 
 import numpy as np
-
-def calculate_linear_dist(coord_1 : tuple, coord_2 : tuple) -> float:
-    x_dist = abs(coord_2[0] - coord_1[0])
-    y_dist = abs(coord_2[1] - coord_1[1])
-    
-    return np.sqrt(x_dist ** 2 + y_dist ** 2)
-
-
+import math
 
 def calculate_perpendicular_dist(coord_w1 : tuple, coord_w2 : tuple, coord_robot : tuple) -> float:
     #############################################################################################
@@ -132,10 +125,12 @@ def calculate_steering_angle(velocity : float, p_dist : float, theta_transform :
     theta = np.arctan(-p_dist / v_horiz) + theta_transform 
 
     # Bound the theta value
-    if theta >= (np.pi * 2):            # if theta is larger than a full rotation
+    theta = math.fmod(theta, (np.pi * 2))   # mod of value with respect to 2pi (effectively bounding between [0,2pi])
+    # legacy code, in case new code breaks it
+    """if theta >= (np.pi * 2):            # if theta is larger than a full rotation
         theta -= (np.pi * 2)            # bound it 
     elif theta < 0:                     # if theta is a negative rotation
         theta = (np.pi * 2) + theta     # bound it
     else: 
-        print("Error in calculate_steering_angle: Theta bounding recieved unexpected value.")
+        print("Error in calculate_steering_angle: Theta bounding recieved unexpected value.")"""
     return theta
