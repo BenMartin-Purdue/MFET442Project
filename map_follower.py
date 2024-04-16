@@ -1,13 +1,17 @@
 #!/usr/bin/env python3
+
 """
 MFET 44200 - Lab 06
 Contributers: Zachary Wilson
 
 Description: The main file of Lab 06 that controls the acutal movement and navigation of the 
-    rally car based on incoming data from LIDAR, odometry, and AMCL position localization.  
+    rally car based on incoming data from LIDAR, odometry, and AMCL position localization. 
+    The MapFollower class handles the intake of position data from the AMCL localizer, and then
+    makes use of geometric equations to figure out a target angle vector and magnitude of the 
+    velocity to keep a stable tracking of inbuilt map waypoints. Finally, it uses these targets
+    in a PID controller that controls the actual steering angle and throttle.
 
-TODO: Add more
-
+    4/16/2024-2:51:35 - Final draft of the code, before actual testing on the rallycar.
 """
 
 import waypoint
@@ -17,8 +21,7 @@ import tf
 import math
 import numpy as np
 from simple_pid import PID
-from MFET44200_Lab06_Utils import calculate_linear_dist
-from MFET44200_Lab06_Steering import calculate_perpendicular_dist, calculate_steering_angle, calculate_waypoint_angle
+from MFET44200_Lab06_Utils import Util
 
 class MapFollower:
     def __init__(self):
@@ -95,9 +98,9 @@ class MapFollower:
         waypoint_2_tup = (waypoint_2[0], waypoint_2[1])                 # converts data to be readable by following methods
         robot_pos_tup = (self.current_pose[0], self.current_pose[1])
         
-        p_dist = calculate_perpendicular_dist(waypoint_1_tup, waypoint_2_tup, robot_pos_tup)    # calculates the perpendicular distance
-        theta_transform = calculate_waypoint_angle(waypoint_1_tup, waypoint_2_tup)              # calculates the angle between the two waypoints in global space
-        steering_angle_global = calculate_steering_angle(vel, p_dist, theta_transform)          # calculates a smooth steering angle based on arbitary velocity and previous calculation
+        p_dist = Util.SteeringTarget.calculate_perpendicular_dist(waypoint_1_tup, waypoint_2_tup, robot_pos_tup)    # calculates the perpendicular distance
+        theta_transform = Util.SteeringTarget.calculate_waypoint_angle(waypoint_1_tup, waypoint_2_tup)              # calculates the angle between the two waypoints in global space
+        steering_angle_global = Util.SteeringTarget.calculate_steering_angle(vel, p_dist, theta_transform)          # calculates a smooth steering angle based on arbitary velocity and previous calculation
         steering_angle_local = math.radians(self.current_pose[2]) - steering_angle_global       # converts the global steering angle back to local space
 
         return steering_angle_local
@@ -122,7 +125,7 @@ class MapFollower:
         waypoint_2_tup = (waypoint_target[0], waypoint_target[1])                                   # converts data to be readable by following methods
         robot_pos_tup = (self.current_pose[0], self.current_pose[1])
         
-        linear_comp =  np.exp(vel_droppoff / calculate_linear_dist(robot_pos_tup, waypoint_2_tup))  # Drop off velocity percentage as car approaches the waypoint
+        linear_comp =  np.exp(vel_droppoff / Util.calculate_linear_dist(robot_pos_tup, waypoint_2_tup))  # Drop off velocity percentage as car approaches the waypoint
         angular_comp = (np.pi / 2) - self.current_steering_angle                                    # Drop off velocity as percentage as car deviates from the path
         vel_final = vel_max * ((linear_comp * angular_comp) / (np.pi / 2))                          # combines these calculations and max 
 
@@ -150,7 +153,7 @@ class MapFollower:
         steer_error = self.steering_PID(self.current_steering_angle - self.process_steering_target(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel))
         
         # Calculating tolerance 
-        dist_to_desired_waypoint = calculate_linear_dist((self.current_pose[0], self.current_pose[1]), (self.desired_waypoint[0], self.desired_waypoint[1]))
+        dist_to_desired_waypoint = Util.calculate_linear_dist((self.current_pose[0], self.current_pose[1]), (self.desired_waypoint[0], self.desired_waypoint[1]))
         
         # GATEWAY CONDITION #
         if(dist_to_desired_waypoint > waypoint_tolerance):
