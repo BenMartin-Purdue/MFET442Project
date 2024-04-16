@@ -1,4 +1,7 @@
 #!/usr/bin/env python3
+
+# LEGACY CODE - NO LONGER IN USE #
+
 """
 MFET 44200 - Lab 06
 Contributers: Zachary Wilson
