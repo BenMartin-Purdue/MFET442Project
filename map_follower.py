@@ -30,12 +30,16 @@ class MapFollower:
         self.desired_waypoint = self.waypoints.pose_arr[self.index]
         self.previous_waypoint = self.waypoints.pose_arr[self.index - 1]
 
+        # Node declaration
         rospy.Subscriber("/amcl_pose", geometry_msgs.msg.PoseWithCovarianceStamped, self.update_current_pose)
+
+        # Local control information
         self.current_pose = []
+        self.current_vel = 0
+        self.current_steering_angle = 0
 
         # PID controller
-        
-        # control parameters
+        # CONTROL PARAMETERS #
         accel_Kp = 0
         accel_Ki = 0
         accel_Kd = 0
@@ -46,7 +50,7 @@ class MapFollower:
 
         self.set_vel = 600
         self.steering_vel = 20
-        # Control parameters
+        # CONTROL PARAMETERS # 
 
         self.accel_PID = PID(accel_Kp, accel_Ki, accel_Kd, 0)               # import the parameters into the PID controller
         self.steering_PID = PID(steer_Kp, steer_Ki, steer_Kd, 0)            # Set point is 0 here, because later calculations evaluate to 0 when on base.
@@ -98,7 +102,7 @@ class MapFollower:
 
 
 
-    def process_velocity_target(self, waypoint_target : list, robot_pos : list, cur_steering_angle : float, vel_max : float, vel_min_percent: float, vel_droppoff) -> float:
+    def process_velocity_target(self, waypoint_target : list, robot_pos : list, vel_max : float, vel_min_percent: float, vel_droppoff) -> float:
         #############################################################################################
         # Takes in the waypoint data, the robot's current position, and velocity parameters, 
         # and returns a floating point velocity for the car to target.
@@ -113,54 +117,49 @@ class MapFollower:
         # 'vel_final'           - float; the calculated velocity for the rally car to target.
         ############################################################################################# 
        
-        waypoint_2_tup = (waypoint_target[0], waypoint_target[1])                 # converts data to be readable by following methods
+        waypoint_2_tup = (waypoint_target[0], waypoint_target[1])                                   # converts data to be readable by following methods
         robot_pos_tup = (self.current_pose[0], self.current_pose[1])
         
         linear_comp =  np.exp(vel_droppoff / calculate_linear_dist(robot_pos_tup, waypoint_2_tup))  # Drop off velocity percentage as car approaches the waypoint
-        angular_comp = (np.pi / 2) - cur_steering_angle                                             # Drop off velocity as percentage as car deviates from the path
+        angular_comp = (np.pi / 2) - self.current_steering_angle                                    # Drop off velocity as percentage as car deviates from the path
         vel_final = vel_max * ((linear_comp * angular_comp) / (np.pi / 2))                          # combines these calculations and max 
 
         return vel_final
 
 
 
-    def control_loop(self) -> None:
+    def control_loop(self, waypoint_tolerance : float = 20, will_loop : bool = True) -> None:
         #############################################################################################
         # The "Main" loop of the rallycar control. Makes use incoming data to update the current waypoint,
         # calculate the heading for the rallycar steering, and then use a PID controller for both
         # the acceleration and the steering angle. 
-        # 
+        #
+        # 'waypoint_tolerance' - float; keyword argument that controls how close to a waypoint the car can get before its considered 'reached'
+        # 'will_loop'          - bool;  keyword argument that controls if the car will target the original waypoint once it reaches the last. 
+        #
         # TODO: Figure out how to run this at 10 / 30 / 50 / variable Hz
         #           *Probably not included inside the function.
         # TODO: Messy Comments, need to clean up
         # 
         #############################################################################################    
 
-        # TODO: THIS NEEDS TO BE POPULATED BEFORE THIS WORKS!!!!
-        current_vel = None
-        current_steering_angle = None
         # HACK: current_vel and current_steering_angle are not provided yet! This code stops the interperter from yelling but it does not work yet!
-        vel_error = self.accel_PID(current_vel - self.process_velocity_target(self.desired_waypoint, self.current_pose, current_steering_angle, .2, 5))
-        steer_error = self.steering_PID(current_steering_angle - self.process_steering_target(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel))
-
-        # Waypoint params
-        waypoint_tolerance = 20 # defines the radial distance required to "complete" a waypoint
-        will_loop = True        # defines if the robot will target waypoint 0 once it reaches the final waypoint, or terminate
-        # Waypoint params
-
+        vel_error = self.accel_PID(self.current_vel - self.process_velocity_target(self.desired_waypoint, self.current_pose, 1024, .2, 5))
+        steer_error = self.steering_PID(self.current_steering_angle - self.process_steering_target(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel))
+        
         # Calculating tolerance 
         dist_to_desired_waypoint = calculate_linear_dist((self.current_pose[0], self.current_pose[1]), (self.desired_waypoint[0], self.desired_waypoint[1]))
         
-        # Gateway condition
+        # GATEWAY CONDITION #
         if(dist_to_desired_waypoint > waypoint_tolerance):
             # should the distance to the desired waypoint be greater than the tolerance, exit now.
             return
         
-        # loopback conditions
+        # LOOPBACK CONDITIONS #
         if((self.index > len(self.waypoints.pose_arr)) and will_loop == True): 
             # if index is larger than the waypoint array, reset the index back to 0
             # basically, will call a continous looping of the waypoints if true
-            self.index = -1 # will have one added to it - making it 0
+            self.index = -1 # <- will have one added to it - making it 0
         elif (self.index > len(self.waypoints.pose_arr) and will_loop == False):
             # HACK: This avoids an indexOutOfBoundsException, but never actually closes down the 
             #   control loop.
