@@ -48,7 +48,9 @@ class MapFollower:
         steer_Ki = 0
         steer_Kd = 0
 
-        self.set_vel = 600
+        self.max_vel = 1024
+        self.min_vel = 256
+        self.velocity_falloff = 5
         self.steering_vel = 20
         # CONTROL PARAMETERS # 
 
@@ -144,7 +146,7 @@ class MapFollower:
         #############################################################################################    
 
         # HACK: current_vel and current_steering_angle are not provided yet! This code stops the interperter from yelling but it does not work yet!
-        vel_error = self.accel_PID(self.current_vel - self.process_velocity_target(self.desired_waypoint, self.current_pose, 1024, .2, 5))
+        vel_error = self.accel_PID(self.current_vel - self.process_velocity_target(self.desired_waypoint, self.current_pose, self.max_vel, self.min_vel/self.max_vel, self.velocity_falloff))
         steer_error = self.steering_PID(self.current_steering_angle - self.process_steering_target(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel))
         
         # Calculating tolerance 
