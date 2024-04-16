@@ -34,6 +34,9 @@ def calculate_perpendicular_dist(coord_w1 : tuple, coord_w2 : tuple, coord_robot
     # 'dist'  - float; perpendicular distance, + if dist 'over', - if distance 'under'
     #############################################################################################
    
+    # Make sure incoming data is valid
+    assert len(coord_w1) == 2 & len(coord_w2) == 2 & len(coord_robot) == 2
+
     # X-intercept calculation
     # world's longest calculation
     x_intercept = ((coord_robot[0] * coord_w2[0] * coord_w2[0]) - (2 * coord_robot[0] * coord_w1[0] * coord_w1[0]) + (coord_robot[0] * coord_w1[0] * coord_w1[0]) + (coord_w2[1] * coord_w2[0] * coord_robot[1]) - (coord_w1[1] * coord_w2[0] * coord_robot[1]) - (coord_w2[1] * coord_w1[0] * coord_robot[1]) + (coord_w1[1] * coord_w1[0] * coord_robot[1]) - (coord_w2[1] * coord_w1[1] * coord_w2[0]) + (coord_w1[1] * coord_w1[1] * coord_w2[0]) + (coord_w2[1] * coord_w2[1] * coord_w1[0]) - (coord_w2[1] * coord_w1[1] * coord_w1[0])) / ((coord_w2[1] * coord_w2[1]) + (coord_w1[1] * coord_w1[1]) - (2 * coord_w2[1] * coord_w1[1]) + (coord_w2[0] * coord_w2[0]) - (2 * coord_w2[0] * coord_w1[0]) + (coord_w1[0] * coord_w1[0]))        
@@ -74,11 +77,13 @@ def calculate_waypoint_angle(coord_w1 : tuple, coord_w2 : tuple) -> float:
     # returns theta
     # 'theta' - float; angle from waypoint 1 -> 2; 0 -> 360
     #############################################################################################
-    # theta calculation
     
+    # make sure incoming data is valid
+    assert len(coord_w1) == 2 & len(coord_w2) == 2
+    
+    # theta calculation
     # All of this is just using the waypoints position and an arctan function to calculate an angle, then
     # placing that angle on the correct quadrant of the graph
-
     # TODO: Clean up? seems inefficent
     if coord_w2[1] >= coord_w1[1]:                              # if waypoint 2 is higher than waypoint 1
         if coord_w2[0] > coord_w1[0]:                           # if waypoint 2 is farther than waypoint 1
@@ -114,9 +119,9 @@ def calculate_steering_angle(velocity : float, p_dist : float, theta_transform :
     
     # use the input velocity and the perpendicular distance to calculate the projected vector
     if abs(p_dist) <= velocity:
-        v_horiz = np.sqrt((velocity ** 2) - (p_dist ** 2))
-    elif abs(p_dist) > velocity:
-        v_horiz = .000001
+        v_horiz = np.sqrt((velocity ** 2) - (p_dist ** 2))      # calculation using geometry
+    elif abs(p_dist) > velocity:        
+        v_horiz = .000001                                       # returns basically 0, such that later calculations approach 90degs to axis
     else:
         print("Error in calculate_steering_angle: theta calculation recieved unexpected value.")
 
@@ -126,11 +131,14 @@ def calculate_steering_angle(velocity : float, p_dist : float, theta_transform :
 
     # Bound the theta value
     theta = math.fmod(theta, (np.pi * 2))   # mod of value with respect to 2pi (effectively bounding between [0,2pi])
+    
     # legacy code, in case new code breaks it
-    """if theta >= (np.pi * 2):            # if theta is larger than a full rotation
+    """
+    if theta >= (np.pi * 2):            # if theta is larger than a full rotation
         theta -= (np.pi * 2)            # bound it 
     elif theta < 0:                     # if theta is a negative rotation
         theta = (np.pi * 2) + theta     # bound it
     else: 
-        print("Error in calculate_steering_angle: Theta bounding recieved unexpected value.")"""
+        print("Error in calculate_steering_angle: Theta bounding recieved unexpected value.")
+    """
     return theta

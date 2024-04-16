@@ -3,8 +3,7 @@
 MFET 44200 - Lab 06
 Contributers: Zachary Wilson
 
-Description: A collection of functions used to calculate steering angles based on 
-distance form the target axis.
+Description: A collection of utility functions for more concise code.
 
 'calculate_linear_dist(coord_w1 : tuple, coord_w2 : tuple) -> float'
     Takes in two arbitrary points, and calculates the distance between them.
