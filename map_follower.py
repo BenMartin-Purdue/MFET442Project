@@ -16,7 +16,8 @@ Description: The main file of Lab 06 that controls the acutal movement and navig
 
 import waypoint
 import rospy
-import geometry_msgs.msg
+from geometry_msgs.msg import PoseWithCovarianceStamped
+from std_msgs.msg import Float32
 import tf
 import math
 import numpy as np
@@ -34,7 +35,10 @@ class MapFollower:
         self.previous_waypoint = self.waypoints.pose_arr[self.index - 1]
 
         # Node declaration
-        rospy.Subscriber("/amcl_pose", geometry_msgs.msg.PoseWithCovarianceStamped, self.update_current_pose)
+        rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.update_current_pose)
+        self.accel_pub = rospy.Publisher("/accelerator_cmd", Float32, queue_size=10)
+        self.steer_pub = rospy.Publisher("/steering_cmd", Float32, queue_size=10)
+        rospy.Rate(30) # 30Hz
 
         # Local control information
         self.current_pose = []
@@ -149,8 +153,8 @@ class MapFollower:
         #############################################################################################    
 
         # HACK: current_vel and current_steering_angle are not provided yet! This code stops the interperter from yelling but it does not work yet!
-        vel_error = self.accel_PID(self.current_vel - self.process_velocity_target(self.desired_waypoint, self.current_pose, self.max_vel, self.min_vel/self.max_vel, self.velocity_falloff))
-        steer_error = self.steering_PID(self.current_steering_angle - self.process_steering_target(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel))
+        self.vel_error = self.accel_PID(self.current_vel - self.process_velocity_target(self.desired_waypoint, self.current_pose, self.max_vel, self.min_vel/self.max_vel, self.velocity_falloff))
+        self.steer_error = self.steering_PID(self.current_steering_angle - self.process_steering_target(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel))
         
         # Calculating tolerance 
         dist_to_desired_waypoint = Util.calculate_linear_dist((self.current_pose[0], self.current_pose[1]), (self.desired_waypoint[0], self.desired_waypoint[1]))
@@ -178,3 +182,38 @@ class MapFollower:
         self.desired_waypoint = self.waypoints.pose_arr[self.index] # set the new desired waypoint
 
 
+
+    def write_accel(self) -> None:
+        #############################################################################################
+        # Writes the updated velocity to the accelerator. Also saves this updated velocity as the most 
+        # recent velocity
+        #############################################################################################    
+        target_vel = self.current_vel - self.vel_error
+        self.current_vel = target_vel
+        target_vel = Float32(target_vel)
+        self.accel_pub.publish(target_accel)
+
+
+
+    
+    def write_steering(self) -> None: 
+        #############################################################################################
+        # Writes the updated steering angle to the steering. Also saves this updated angle as the most 
+        # recent angle
+        #############################################################################################    
+        target_steering = self.current_steering_angle - self.steer_error
+        self.current_steering_angle = target_steering
+        target_steering = Float32(target_steering)
+        self.steer_pub.publish(target_steering)
+
+
+def main():
+    map_follower_instance = MapFollower()
+    while not rospy.is_shutdown():
+        map_follower_instance.control_loop()
+        map_follower_instance.write_accel()
+        map_follower_instance.write_steering()
+        rospy.spin()
+
+if __name__ == "__main__":
+    main()
