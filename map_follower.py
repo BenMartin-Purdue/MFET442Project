@@ -14,10 +14,10 @@ Description: The main file of Lab 06 that controls the acutal movement and navig
     4/16/2024-2:51:35 - Final draft of the code, before actual testing on the rallycar.
 """
 
-import waypoint
 import rospy
 from geometry_msgs.msg import PoseWithCovarianceStamped
 from std_msgs.msg import Float32
+from nav_msgs.msg import Odometry
 import tf
 import math
 import numpy as np
@@ -29,33 +29,35 @@ class MapFollower:
         #############################################################################################
         # General initalization of the MapFollower class
         #############################################################################################    
-        self.waypoints = waypoint()
+        self.waypoints = Util.parseWaypoints()
         self.index = 1
         self.desired_waypoint = self.waypoints.pose_arr[self.index]
         self.previous_waypoint = self.waypoints.pose_arr[self.index - 1]
 
         # Node declaration
         rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.update_current_pose)
+        # TODO: This needs to be implemented to actually use PID control instead of simulating it
+        # rospy.Subscriber("/odom", Odometry, self.update_current_vel)
         self.accel_pub = rospy.Publisher("/accelerator_cmd", Float32, queue_size=10)
         self.steer_pub = rospy.Publisher("/steering_cmd", Float32, queue_size=10)
         rospy.Rate(30) # 30Hz
 
         # Local control information
-        self.current_pose = []
+        self.current_pose = [0,0,0]
         self.current_vel = 0
         self.current_steering_angle = 0
 
         # PID controller
         # CONTROL PARAMETERS #
-        accel_Kp = 0
-        accel_Ki = 0
-        accel_Kd = 0
+        accel_Kp = 1
+        accel_Ki = .0001
+        accel_Kd = .0009
 
-        steer_Kp = 0
-        steer_Ki = 0
-        steer_Kd = 0
+        steer_Kp = 1
+        steer_Ki = .0001
+        steer_Kd = .0009
 
-        self.max_vel = 1024
+        self.max_vel = 512
         self.min_vel = 256
         self.velocity_falloff = 5
         self.steering_vel = 20
@@ -81,6 +83,15 @@ class MapFollower:
         euler = tf.transformations.euler_from_quaternion(quaternion)    # I dont know what this does
         yaw = math.degrees(euler[2])                                    # but apperently it gives a yaw value
         self.current_pose = [msg.pose.pose.position.x, msg.pose.pose.position.y, yaw]    # Set the current position
+        rospy.loginfo(self.current_pose)
+
+
+
+    def update_current_vel(self, msg) -> None:
+        # HACK: No idea if this velocity is calculated in global space or local space.
+        #       Gonna be WAY easier if its local -> I don't wanna do more geometry
+
+        self.current_vel = msg.TwistWithCovariance.Twist.linear.x
 
 
 
@@ -129,12 +140,11 @@ class MapFollower:
         waypoint_2_tup = (waypoint_target[0], waypoint_target[1])                                   # converts data to be readable by following methods
         robot_pos_tup = (self.current_pose[0], self.current_pose[1])
         
-        linear_comp =  np.exp(vel_droppoff / Util.calculate_linear_dist(robot_pos_tup, waypoint_2_tup))  # Drop off velocity percentage as car approaches the waypoint
-        angular_comp = (np.pi / 2) - self.current_steering_angle                                    # Drop off velocity as percentage as car deviates from the path
+        linear_comp =  np.exp(-(vel_droppoff / Util.calculate_linear_dist(robot_pos_tup, waypoint_2_tup)))  # Drop off velocity percentage as car approaches the waypoint
+        angular_comp = (np.pi / 2) - abs(self.current_steering_angle)                                    # Drop off velocity as percentage as car deviates from the path
         vel_final = vel_max * ((linear_comp * angular_comp) / (np.pi / 2))                          # combines these calculations and max 
 
         return vel_final
-
 
 
     def control_loop(self, waypoint_tolerance : float = 20, will_loop : bool = True) -> None:
@@ -152,7 +162,6 @@ class MapFollower:
         # 
         #############################################################################################    
 
-        # HACK: current_vel and current_steering_angle are not provided yet! This code stops the interperter from yelling but it does not work yet!
         self.vel_error = self.accel_PID(self.current_vel - self.process_velocity_target(self.desired_waypoint, self.current_pose, self.max_vel, self.min_vel/self.max_vel, self.velocity_falloff))
         self.steer_error = self.steering_PID(self.current_steering_angle - self.process_steering_target(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel))
         
@@ -165,11 +174,11 @@ class MapFollower:
             return
         
         # LOOPBACK CONDITIONS #
-        if((self.index > len(self.waypoints.pose_arr)) and will_loop == True): 
+        if((self.index + 1 >= len(self.waypoints)) and will_loop == True): 
             # if index is larger than the waypoint array, reset the index back to 0
             # basically, will call a continous looping of the waypoints if true
             self.index = -1 # <- will have one added to it - making it 0
-        elif (self.index > len(self.waypoints.pose_arr) and will_loop == False):
+        elif (self.index + 1 >= len(self.waypoints) and will_loop == False):
             # HACK: This avoids an indexOutOfBoundsException, but never actually closes down the 
             #   control loop.
             # TODO: Actually close the control loop.
@@ -179,8 +188,8 @@ class MapFollower:
         # Stepping the desired waypoint 
         self.index += 1                                             # step the index
         self.previous_waypoint = self.desired_waypoint              # save the previous desired waypoint
-        self.desired_waypoint = self.waypoints.pose_arr[self.index] # set the new desired waypoint
-
+        self.desired_waypoint = self.waypoints[self.index] # set the new desired waypoint
+        
 
 
     def write_accel(self) -> None:
@@ -188,7 +197,8 @@ class MapFollower:
         # Writes the updated velocity to the accelerator. Also saves this updated velocity as the most 
         # recent velocity
         #############################################################################################    
-        target_vel = self.current_vel - self.vel_error
+        target_vel = self.current_vel + self.vel_error
+        target_vel = Util.clamp(target_vel, max=2048, min=-2048)
         self.current_vel = target_vel
         target_vel = Float32(target_vel)
         self.accel_pub.publish(target_accel)
@@ -201,7 +211,8 @@ class MapFollower:
         # Writes the updated steering angle to the steering. Also saves this updated angle as the most 
         # recent angle
         #############################################################################################    
-        target_steering = self.current_steering_angle - self.steer_error
+        target_steering = self.current_steering_angle + self.steer_error
+        target_steering = Util.clamp(target_steering, max=2048, min=-2048)
         self.current_steering_angle = target_steering
         target_steering = Float32(target_steering)
         self.steer_pub.publish(target_steering)
