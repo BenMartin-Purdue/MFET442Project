@@ -76,21 +76,32 @@ class Util:
         # returns waypoint_list
         # 'waypoint_list' - list; List of all the waypoint data in order.
         #############################################################################################
-        
-        waypoint_list = []
-        file = open(filename, 'r')      # open the file at filename
-        while True:
-            line = file.readline()      # read the file line by line 
-            if not line:
-                break
-            current_line_list = line.split(",")                 # split the line into a list 
-            current_line_list[0] = float(current_line_list[0])
-            current_line_list[1] = float(current_line_list[1])  # convert each element of the list into a float
-            current_line_list[2] = float(current_line_list[2])
-            waypoint_list.append(current_line_list)             # add this list of elements to the total waypoint list
-        return waypoint_list                            
+
+        PathsOpen = open(filename, "r")
+        Paths = PathsOpen.readlines()
+
+        XPosition = []
+        YPosition = []
+
+        for i in range(len(Paths)):
+            if Paths[i] == "position:\n":
+                X = Paths[i+1]
+                Y = Paths[i+2]
+
+                X = float(X[3:].strip())
+                Y = float(Y[3:].strip())
+
+
+                XPosition.append(X)
+                YPosition.append(Y)    
+
+        pose_arr = []
+        for i in range(0, len(XPosition)):
+            current_waypoint = [XPosition[i], YPosition[i], 0]
+            pose_arr.append(current_waypoint)
+
+        return pose_arr        
             
-        
 
     class SteeringTarget():
         def calculate_perpendicular_dist(coord_w1 : tuple, coord_w2 : tuple, coord_robot : tuple) -> float:

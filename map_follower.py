@@ -29,7 +29,7 @@ class MapFollower:
         #############################################################################################
         # General initalization of the MapFollower class
         #############################################################################################    
-        self.waypoints = [[0.0,0.0,0.0], [20.0,0.0,0.0]]
+        self.waypoints = Util.parseWaypoints('TODO.yaml')
         self.index = 1
         self.desired_waypoint = self.waypoints[self.index]
         self.previous_waypoint = self.waypoints[self.index - 1]
