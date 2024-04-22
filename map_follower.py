@@ -29,15 +29,16 @@ class MapFollower:
         #############################################################################################
         # General initalization of the MapFollower class
         #############################################################################################    
-        self.waypoints = Util.parseWaypoints()
+        self.waypoints = [[0.0,0.0,0.0], [20.0,0.0,0.0]]
         self.index = 1
-        self.desired_waypoint = self.waypoints.pose_arr[self.index]
-        self.previous_waypoint = self.waypoints.pose_arr[self.index - 1]
+        self.desired_waypoint = self.waypoints[self.index]
+        self.previous_waypoint = self.waypoints[self.index - 1]
 
         # Node declaration
+        rospy.init_node('Rally_car_control')
         rospy.Subscriber("/amcl_pose", PoseWithCovarianceStamped, self.update_current_pose)
         # TODO: This needs to be implemented to actually use PID control instead of simulating it
-        # rospy.Subscriber("/odom", Odometry, self.update_current_vel)
+        rospy.Subscriber("/odom", Odometry, self.update_current_vel)
         self.accel_pub = rospy.Publisher("/accelerator_cmd", Float32, queue_size=10)
         self.steer_pub = rospy.Publisher("/steering_cmd", Float32, queue_size=10)
         rospy.Rate(30) # 30Hz
@@ -54,10 +55,10 @@ class MapFollower:
         accel_Kd = .0009
 
         steer_Kp = 1
-        steer_Ki = .0001
-        steer_Kd = .0009
+        steer_Ki = .00005
+        steer_Kd = .000045
 
-        self.max_vel = 512
+        self.max_vel = 500
         self.min_vel = 256
         self.velocity_falloff = 5
         self.steering_vel = 20
@@ -116,9 +117,8 @@ class MapFollower:
         p_dist = Util.SteeringTarget.calculate_perpendicular_dist(waypoint_1_tup, waypoint_2_tup, robot_pos_tup)    # calculates the perpendicular distance
         theta_transform = Util.SteeringTarget.calculate_waypoint_angle(waypoint_1_tup, waypoint_2_tup)              # calculates the angle between the two waypoints in global space
         steering_angle_global = Util.SteeringTarget.calculate_steering_angle(vel, p_dist, theta_transform)          # calculates a smooth steering angle based on arbitary velocity and previous calculation
-        steering_angle_local = math.radians(self.current_pose[2]) - steering_angle_global       # converts the global steering angle back to local space
 
-        return steering_angle_local
+        return steering_angle_global
 
 
 
@@ -199,9 +199,9 @@ class MapFollower:
         #############################################################################################    
         target_vel = self.current_vel + self.vel_error
         target_vel = Util.clamp(target_vel, max=2048, min=-2048)
-        self.current_vel = target_vel
         target_vel = Float32(target_vel)
-        self.accel_pub.publish(target_accel)
+        rospy.loginfo("Velocity Target : {0}".format(target_vel))
+        self.accel_pub.publish(target_vel)
 
 
 
@@ -212,19 +212,20 @@ class MapFollower:
         # recent angle
         #############################################################################################    
         target_steering = self.current_steering_angle + self.steer_error
-        target_steering = Util.clamp(target_steering, max=2048, min=-2048)
-        self.current_steering_angle = target_steering
-        target_steering = Float32(target_steering)
+        target_steering = Util.clamp(target_steering, max=1800, min=-1800)
+        self.current_steering_angle = math.radians(self.current_pose[2])
+        target_steering = math.radians(self.current_pose[2]) -target_steering
+        target_steering = Float32(-target_steering * 2000)
+        rospy.loginfo("Steering Target : {0}".format(target_steering))
         self.steer_pub.publish(target_steering)
 
 
 def main():
     map_follower_instance = MapFollower()
     while not rospy.is_shutdown():
-        map_follower_instance.control_loop()
+        map_follower_instance.control_loop(waypoint_tolerance=1, will_loop=False)
         map_follower_instance.write_accel()
         map_follower_instance.write_steering()
-        rospy.spin()
 
 if __name__ == "__main__":
     main()
