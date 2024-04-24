@@ -29,7 +29,8 @@ class MapFollower:
         #############################################################################################
         # General initalization of the MapFollower class
         #############################################################################################    
-        self.waypoints = Util.parseWaypoints('TODO.yaml')
+        self.waypoints = Util.parseWaypoints('knoy_demo_track.yaml')
+        # self.waypoints = [[0.0,0.0,0.0],[100.0,0.0,0.0]]
         self.index = 1
         self.desired_waypoint = self.waypoints[self.index]
         self.previous_waypoint = self.waypoints[self.index - 1]
@@ -51,15 +52,15 @@ class MapFollower:
         # PID controller
         # CONTROL PARAMETERS #
         accel_Kp = 1
-        accel_Ki = .0001
-        accel_Kd = .0009
+        accel_Ki = .001
+        accel_Kd = .009
 
-        steer_Kp = 1
+        steer_Kp = .3
         steer_Ki = .00005
         steer_Kd = .000045
 
-        self.max_vel = 500
-        self.min_vel = 256
+        self.max_vel = 1024
+        self.min_vel = 400
         self.velocity_falloff = 5
         self.steering_vel = 20
         # CONTROL PARAMETERS # 
@@ -117,8 +118,13 @@ class MapFollower:
         p_dist = Util.SteeringTarget.calculate_perpendicular_dist(waypoint_1_tup, waypoint_2_tup, robot_pos_tup)    # calculates the perpendicular distance
         theta_transform = Util.SteeringTarget.calculate_waypoint_angle(waypoint_1_tup, waypoint_2_tup)              # calculates the angle between the two waypoints in global space
         steering_angle_global = Util.SteeringTarget.calculate_steering_angle(vel, p_dist, theta_transform)          # calculates a smooth steering angle based on arbitary velocity and previous calculation
-
+        
         return steering_angle_global
+
+
+    def global_to_local_steering(self, steering_global : float) -> float:
+        steering_angle_local = steering_global - self.current_steering_angle
+        return steering_angle_local
 
 
 
@@ -163,11 +169,14 @@ class MapFollower:
         #############################################################################################    
 
         self.vel_error = self.accel_PID(self.current_vel - self.process_velocity_target(self.desired_waypoint, self.current_pose, self.max_vel, self.min_vel/self.max_vel, self.velocity_falloff))
-        self.steer_error = self.steering_PID(self.current_steering_angle - self.process_steering_target(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel))
-        
+        # self.steer_error = self.steering_PID(self.current_steering_angle - self.process_steering_target(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel))
+        self.steer_error = self.steering_PID(self.current_steering_angle - Util.SteeringTarget.calculate_waypoint_angle(self.current_pose, self.desired_waypoint))
+
         # Calculating tolerance 
         dist_to_desired_waypoint = Util.calculate_linear_dist((self.current_pose[0], self.current_pose[1]), (self.desired_waypoint[0], self.desired_waypoint[1]))
-        
+        rospy.loginfo("Distance to Desired Waypoint : {0}".format(dist_to_desired_waypoint))
+        rospy.loginfo("Current waypoint targeted : {0}".format(self.index))
+
         # GATEWAY CONDITION #
         if(dist_to_desired_waypoint > waypoint_tolerance):
             # should the distance to the desired waypoint be greater than the tolerance, exit now.
@@ -189,6 +198,7 @@ class MapFollower:
         self.index += 1                                             # step the index
         self.previous_waypoint = self.desired_waypoint              # save the previous desired waypoint
         self.desired_waypoint = self.waypoints[self.index] # set the new desired waypoint
+        rospy.loginfo("Current Waypoint reached: Going to waypoint {0}".format(self.index))
         
 
 
@@ -199,7 +209,7 @@ class MapFollower:
         #############################################################################################    
         target_vel = self.current_vel + self.vel_error
         target_vel = Util.clamp(target_vel, max=2048, min=-2048)
-        target_vel = Float32(target_vel)
+        target_vel = Float32(300)
         rospy.loginfo("Velocity Target : {0}".format(target_vel))
         self.accel_pub.publish(target_vel)
 
@@ -211,11 +221,9 @@ class MapFollower:
         # Writes the updated steering angle to the steering. Also saves this updated angle as the most 
         # recent angle
         #############################################################################################    
-        target_steering = self.current_steering_angle + self.steer_error
-        target_steering = Util.clamp(target_steering, max=1800, min=-1800)
+        target_steering = self.steer_error
         self.current_steering_angle = math.radians(self.current_pose[2])
-        target_steering = math.radians(self.current_pose[2]) -target_steering
-        target_steering = Float32(-target_steering * 2000)
+        target_steering = Float32(Util.clamp(target_steering * 2000, max=2048, min=-2048))
         rospy.loginfo("Steering Target : {0}".format(target_steering))
         self.steer_pub.publish(target_steering)
 
@@ -223,7 +231,7 @@ class MapFollower:
 def main():
     map_follower_instance = MapFollower()
     while not rospy.is_shutdown():
-        map_follower_instance.control_loop(waypoint_tolerance=1, will_loop=False)
+        map_follower_instance.control_loop(waypoint_tolerance=2, will_loop=True)
         map_follower_instance.write_accel()
         map_follower_instance.write_steering()
 

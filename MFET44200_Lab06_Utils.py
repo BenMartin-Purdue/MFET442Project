@@ -45,7 +45,7 @@ class Util:
         x_dist = abs(coord_2[0] - coord_1[0])   # distance in x-axis
         y_dist = abs(coord_2[1] - coord_1[1])   # distance in y-axis
         
-        return np.sqrt(x_dist ** 2 + y_dist ** 2)   # return the hypotenuse of those distances.
+        return np.sqrt((x_dist * x_dist) + (y_dist * y_dist))   # return the hypotenuse of those distances.
 
     def clamp(value : float, *, max : float, min : float) -> float:
         #############################################################################################
@@ -84,12 +84,12 @@ class Util:
         YPosition = []
 
         for i in range(len(Paths)):
-            if Paths[i] == "position:\n":
+            if Paths[i] == "  position:\n":
                 X = Paths[i+1]
                 Y = Paths[i+2]
 
-                X = float(X[3:].strip())
-                Y = float(Y[3:].strip())
+                X = float(X[7:].strip())
+                Y = float(Y[7:].strip())
 
 
                 XPosition.append(X)
@@ -139,9 +139,9 @@ class Util:
                 dist = np.sqrt(((coord_robot[0] - x_intercept) ** 2) + ((coord_robot[1] - y_intercept) ** 2))
             elif (coord_robot[1] >= y_intercept) & (coord_w1[0] > coord_w2[0]):   # signs (negative) the perp. distance from the waypoint axis
                 dist = -np.sqrt(((coord_robot[0] - x_intercept) ** 2) + ((coord_robot[1] - y_intercept) ** 2))
-            elif coord_robot[1] < y_intercept & (coord_w1[0] <= coord_w2[0]):  # signs (negative) the perp. distance from the waypoint axis
+            elif (coord_robot[1] < y_intercept) & (coord_w1[0] <= coord_w2[0]):  # signs (negative) the perp. distance from the waypoint axis
                 dist = -np.sqrt(((coord_robot[0] - x_intercept) ** 2) + ((coord_robot[1] - y_intercept) ** 2))
-            elif coord_robot[1] < y_intercept & (coord_w1[0] > coord_w2[0]):  # signs (positive) the perp. distance from the waypoint axis
+            elif (coord_robot[1] < y_intercept) & (coord_w1[0] > coord_w2[0]):  # signs (positive) the perp. distance from the waypoint axis
                 dist = np.sqrt(((coord_robot[0] - x_intercept) ** 2) + ((coord_robot[1] - y_intercept) ** 2))
             else:                               # if for some reason both of these fail, print error
                 print("Error in calculate_perpendicular_dist: distance calc recieve unexpected value.")
@@ -163,7 +163,7 @@ class Util:
             #############################################################################################
             
             # make sure incoming data is valid
-            assert len(coord_w1) == 2 & len(coord_w2) == 2
+            assert len(coord_w1) >= 2 & len(coord_w2) >= 2
             
             # THETA CALCULATION #
             # All of this is just using the waypoints position and an arctan function to calculate an angle, then
@@ -226,3 +226,4 @@ class Util:
                 print("Error in calculate_steering_angle: Theta bounding recieved unexpected value.")
             """
             return theta
+
