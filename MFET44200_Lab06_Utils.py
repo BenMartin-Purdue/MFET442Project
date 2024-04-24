@@ -123,7 +123,7 @@ class Util:
 
             # X-INTERCEPT CALCULATION #
             # world's longest calculation
-            x_intercept = ((coord_robot[0] * coord_w2[0] * coord_w2[0]) - (2 * coord_robot[0] * coord_w1[0] * coord_w1[0]) + (coord_robot[0] * coord_w1[0] * coord_w1[0]) + (coord_w2[1] * coord_w2[0] * coord_robot[1]) - (coord_w1[1] * coord_w2[0] * coord_robot[1]) - (coord_w2[1] * coord_w1[0] * coord_robot[1]) + (coord_w1[1] * coord_w1[0] * coord_robot[1]) - (coord_w2[1] * coord_w1[1] * coord_w2[0]) + (coord_w1[1] * coord_w1[1] * coord_w2[0]) + (coord_w2[1] * coord_w2[1] * coord_w1[0]) - (coord_w2[1] * coord_w1[1] * coord_w1[0])) / ((coord_w2[1] * coord_w2[1]) + (coord_w1[1] * coord_w1[1]) - (2 * coord_w2[1] * coord_w1[1]) + (coord_w2[0] * coord_w2[0]) - (2 * coord_w2[0] * coord_w1[0]) + (coord_w1[0] * coord_w1[0]))        
+            x_intercept = ((coord_robot[0] * coord_w2[0] * coord_w2[0]) - (2 * coord_robot[0] * coord_w2[0] * coord_w1[0]) + (coord_robot[0] * coord_w1[0] * coord_w1[0]) + (coord_w2[1] * coord_w2[0] * coord_robot[1]) - (coord_w1[1] * coord_w2[0] * coord_robot[1]) - (coord_w2[1] * coord_w1[0] * coord_robot[1]) + (coord_w1[1] * coord_w1[0] * coord_robot[1]) - (coord_w2[1] * coord_w1[1] * coord_w2[0]) + (coord_w1[1] * coord_w1[1] * coord_w2[0]) + (coord_w2[1] * coord_w2[1] * coord_w1[0]) - (coord_w2[1] * coord_w1[1] * coord_w1[0])) / ((coord_w2[1] * coord_w2[1]) + (coord_w1[1] * coord_w1[1]) - (2 * coord_w2[1] * coord_w1[1]) + (coord_w2[0] * coord_w2[0]) - (2 * coord_w2[0] * coord_w1[0]) + (coord_w1[0] * coord_w1[0]))        
 
             # Y-INTERCEPT CALCULATION # 
             if abs(coord_w1[0] - coord_w2[0]) > 0:  # makes sure the axis isn't perfectly vertical
@@ -173,14 +173,14 @@ class Util:
                 if coord_w2[0] > coord_w1[0]:                           # if waypoint 2 is farther than waypoint 1
                     theta = np.arctan((coord_w2[1] - coord_w1[1]) / (coord_w2[0] - coord_w1[0]))
                 elif coord_w2[0] < coord_w1[0]:                         # if waypoint 2 is lesser than waypoint 1
-                    theta = np.arctan((coord_w2[1] - coord_w1[1]) / (coord_w2[0] - coord_w1[0])) + np.pi
+                    theta = np.pi - np.arctan((coord_w2[1] - coord_w1[1]) / (coord_w2[0] - coord_w1[0]))
                 else:                                                   # if waypoints are equal in the X-axis
                     theta = np.pi / 2
-            elif coord_w2[1] < coord_w1[1]:                             # if waypoints are equal in the Y-axis
+            elif coord_w2[1] < coord_w1[1]:                             # if waypoint 2 is lower than waypoint 1
                 if coord_w2[0] > coord_w1[0]:                           # if waypoint 2 is farther than waypoint 1
-                    theta = np.arctan((coord_w2[1] - coord_w1[1]) / (coord_w2[0] - coord_w1[0])) + np.pi
+                    theta = (2 * np.pi) - np.arctan((coord_w2[1] - coord_w1[1]) / (coord_w2[0] - coord_w1[0]))
                 elif coord_w2[0] < coord_w1[0]:                         # if waypoint 2 is lesser than waypoint 1
-                    np.arctan((coord_w2[1] - coord_w1[1]) / (coord_w2[0] - coord_w1[0])) + (2 * np.pi)
+                    theta = np.arctan((coord_w2[1] - coord_w1[1]) / (coord_w2[0] - coord_w1[0])) + np.pi
                 else:                                                   # if waypoints are equal in the X-axis
                     theta = (3 * np.pi) / 2
             else:                                                       # if for some reason all this fails, print an error
