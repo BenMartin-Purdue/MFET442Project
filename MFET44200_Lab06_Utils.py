@@ -29,6 +29,7 @@ Description: A collection of utility functions for more concise code.
 
 import numpy as np
 import math
+import time
 
 class Util:
     def calculate_linear_dist(coord_1 : tuple, coord_2 : tuple) -> float:
@@ -204,11 +205,8 @@ class Util:
             # use the input velocity and the perpendicular distance to calculate the projected vector
             if abs(p_dist) <= velocity:
                 v_horiz = np.sqrt((velocity ** 2) - (p_dist ** 2))      # calculation using geometry
-            elif abs(p_dist) > velocity:  
-                if p_dist > 0:      
-                    v_horiz = .000001                                       # returns basically 0, such that later calculations approach 90degs to axis
-                else:
-                    v_horiz = -.000001
+            elif abs(p_dist) > velocity:        
+                v_horiz = .000001                                       # returns basically 0, such that later calculations approach 90degs to axis
             else:
                 print("Error in calculate_steering_angle: theta calculation recieved unexpected value.")
 
@@ -238,4 +236,24 @@ class Util:
                 theta_calc += (2 * np.pi)
 
             return theta_calc
+    
 
+
+    class Interpolation:
+        def pose_interp(current_pose_estimate : list, current_angle : float, current_vel : float, last_update : float) -> list:
+            current_time = time.monotonic()
+            travel_dist = current_vel * (current_time - last_update)
+            step_vect = Util.Interpolation.step_vector(travel_dist, current_angle)
+            
+            new_estimate = [(current_pose_estimate[0] + step_vect[0]), (current_pose_estimate[1] + step_vect[1]), current_angle]
+            return [new_estimate, current_time]
+
+        def step_vector(dist : float, angle : float) -> list:
+            if angle == (np.pi / 2):
+                return [0, dist]
+            if angle == ((3 * np.pi) / 2):
+                return [0, -dist]
+            
+            x = dist * np.cos(angle)
+            y = dist * np.sin(angle)
+            return [x, y]
