@@ -204,8 +204,11 @@ class Util:
             # use the input velocity and the perpendicular distance to calculate the projected vector
             if abs(p_dist) <= velocity:
                 v_horiz = np.sqrt((velocity ** 2) - (p_dist ** 2))      # calculation using geometry
-            elif abs(p_dist) > velocity:        
-                v_horiz = .000001                                       # returns basically 0, such that later calculations approach 90degs to axis
+            elif abs(p_dist) > velocity:  
+                if p_dist > 0:      
+                    v_horiz = .000001                                       # returns basically 0, such that later calculations approach 90degs to axis
+                else:
+                    v_horiz = -.000001
             else:
                 print("Error in calculate_steering_angle: theta calculation recieved unexpected value.")
 
@@ -226,4 +229,13 @@ class Util:
                 print("Error in calculate_steering_angle: Theta bounding recieved unexpected value.")
             """
             return theta
+
+        def global_to_local_steering(robot_angle : float, steering_target : float) -> float:
+            theta_calc = robot_angle - steering_target
+            if theta_calc > np.pi:
+                theta_calc -= (2 * np.pi)
+            elif theta_calc < -np.pi:
+                theta_calc += (2 * np.pi)
+
+            return theta_calc
 
