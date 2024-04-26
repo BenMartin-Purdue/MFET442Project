@@ -1,11 +1,8 @@
-theta_target = self.current_steering_angle - self.process_steering_target(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel)
-        target_minus = self.current_steering_angle - ((2 * np.pi) - self.process_steering_target(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel))
-        target_plus = self.current_steering_angle - ((2 * np.pi) + self.process_steering_target(self.previous_waypoint, self.desired_waypoint, self.current_pose, self.steering_vel))
+def global_to_local_steering(robot_angle : float, steering_target : float) -> float:
+            theta_calc = robot_angle - steering_target
+            if theta_calc > np.pi:
+                theta_calc -= (2 * np.pi)
+            elif theta_calc < -np.pi:
+                theta_calc += 360
 
-
-if (abs(theta_target) < abs(target_minus)) & abs((theta_target) < abs(target_plus)):
-            theta_final = theta_target
-        elif(abs(target_minus) < abs(target_plus)) & abs((target_minus) < abs(theta_target)):
-            theta_final = target_minus
-        elif(abs(target_plus) < abs(target_minus)) & abs((target_plus) < abs(theta_target)):
-            theta_final = target_plus
+            return theta_calc
