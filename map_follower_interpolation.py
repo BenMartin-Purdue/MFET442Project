@@ -51,16 +51,17 @@ class MapFollower:
         self.current_steering_angle = 0
         self.last_imu_update_time = time.monotonic()
         self.last_pose_update_time = time.monotonic()
+        self.first = True
 
         # PID controller
         # CONTROL PARAMETERS #
         accel_Kp = 1
-        accel_Ki = .001
-        accel_Kd = .009
+        accel_Ki = 0
+        accel_Kd = 0
 
         steer_Kp = 1
         steer_Ki = .001
-        steer_Kd = .009
+        steer_Kd = .0045
 
         self.max_vel = 350
         self.min_vel = 280
@@ -97,16 +98,16 @@ class MapFollower:
 
 
     def update_imu(self, msg) -> None:
+        """if (self.first == True):
+            self.initial_ori = msg.orientation.z
+            self.first = False"""
         # HACK: No idea if this velocity is calculated in global space or local space.
         #       Gonna be WAY easier if its local -> I don't wanna do more geometry
         update_time = time.monotonic() - self.last_imu_update_time
         self.last_imu_update_time = time.monotonic()
 
-        self.current_vel += (msg.linear_acceleration.x * update_time)
-        if msg.orientation.z < 0:
-            self.current_steering_angle = (2 * np.pi) + math.radians(msg.orientation.z)
-        else:
-            self.current_steering_angle = math.radians(msg.orientation.z)
+        # self.current_vel += (msg.linear_acceleration.x * update_time) - .0105
+        self.current_steering_angle = math.fmod(msg.orientation.z + math.radians(self.current_pose[2]), (2 * np.pi))
 
 
 
@@ -240,7 +241,7 @@ class MapFollower:
         target_steering = self.steer_error
         target_steering = Float32(Util.clamp(target_steering * 1250, max=2048, min=-2048))
         # rospy.loginfo("Steering Global Angle : {0}".format(self.steer_error))
-        rospy.loginfo("Current Heading : {0}\nCurrent Steering Error : {1}\nCurrent Velocity : {2}\n Current Velocity Error : {3}\n\n\n".format(self.current_steering_angle, self.steer_error, self.current_vel, self.vel_error))
+        rospy.loginfo("Current Target Waypoint : {0}\nCurrent Heading : {1}\nCurrent Steering Error : {2}\nCurrent Velocity : {3}\n Current Velocity Error : {4}\nCurrent Pose : {5}\n\n\n".format(self.index, self.current_steering_angle, self.steer_error, self.current_vel, self.vel_error, self.current_pose))
         self.steer_pub.publish(target_steering)
 
 

@@ -245,7 +245,7 @@ class Util:
             travel_dist = current_vel * (current_time - last_update)
             step_vect = Util.Interpolation.step_vector(travel_dist, current_angle)
             
-            new_estimate = [(current_pose_estimate[0] + step_vect[0]), (current_pose_estimate[1] + step_vect[1]), current_angle]
+            new_estimate = [(current_pose_estimate[0] + step_vect[0]), (current_pose_estimate[1] + step_vect[1]), current_pose_estimate[2]]
             return [new_estimate, current_time]
 
         def step_vector(dist : float, angle : float) -> list:
