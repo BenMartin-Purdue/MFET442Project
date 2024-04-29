@@ -1,0 +1,34 @@
+self.pose_msg = PoseWithCovarianceStamped()
+
+
+self.process_pose(self.pose_msg)
+
+
+def update_current_pose(self, msg) -> None:
+        #############################################################################################
+        # Updates the current position by taking data from the amcl localization, and extracts usable
+        # data from the output data object.
+        #############################################################################################    
+        self.pose_msg = msg
+
+
+def process_pose(self, msg):
+        quaternion = (
+			msg.pose.pose.orientation.x,
+			msg.pose.pose.orientation.y,    # extracting data from the pose
+			msg.pose.pose.orientation.z,    # to a tuple for processing
+			msg.pose.pose.orientation.w
+        )
+        
+        euler = tf.transformations.euler_from_quaternion(quaternion)    # I dont know what this does exactly,
+        yaw = math.degrees(euler[2])                                    # but it somehow turns the quat into usable angles
+
+        # THE INTERPOLATION UPDATE # 
+        self.IMU_drift = Util.addAngles(self.current_pose[2], -yaw)     # takes the current pose (updated by the IMU) and figures out how far off the IMU is
+        # THE INTERPOLATION UPDATE # 
+
+
+        self.current_pose = [msg.pose.pose.position.x, msg.pose.pose.position.y, yaw]   # Store the important parts of the AMCL data for use
+        self.last_imu_update_time = time.monotonic()                                    # update the IMU's update timer
+        
+
